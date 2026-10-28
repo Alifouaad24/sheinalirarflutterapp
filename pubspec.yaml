@@ -1,0 +1,29 @@
+name: shein_cart_app
+description: Browse SHEIN inside a WebView and collect products in a native cart.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.6.0 <4.0.0' # Flutter 3.27+
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  get: ^4.6.6                 # state management, routing, DI, translations
+  dartz: ^0.10.1              # Either<Failure, T>
+  shared_preferences: ^2.3.2  # local storage
+  webview_flutter: ^4.10.0    # SHEIN WebView
+  webview_flutter_android: ^4.0.0  # Hybrid Composition + chrome://inspect
+  http: ^1.2.2                # API client
+  google_fonts: ^6.2.1        # Cairo font
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

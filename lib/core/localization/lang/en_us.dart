@@ -1,0 +1,60 @@
+import 'package:shein_cart_app/core/localization/locale_keys.dart';
+
+const Map<String, String> enUS = {
+  LocaleKeys.appTitle: 'Shop',
+  LocaleKeys.success: 'Done',
+  LocaleKeys.error: 'Error',
+  LocaleKeys.notice: 'Notice',
+  LocaleKeys.cancel: 'Cancel',
+  LocaleKeys.confirm: 'Confirm',
+  LocaleKeys.retry: 'Try again',
+  LocaleKeys.addToCart: 'Add to cart',
+  LocaleKeys.openProductHint:
+      'Open a product to add it, or paste a cart link above',
+  LocaleKeys.pasteUrlHint: 'Paste a SHEIN cart link here',
+  LocaleKeys.go: 'Go',
+  LocaleKeys.paste: 'Paste',
+  LocaleKeys.clearText: 'Clear',
+  LocaleKeys.invalidUrl: 'Invalid link. Copy the full cart link and paste it',
+  LocaleKeys.clipboardEmpty: 'Nothing copied',
+  LocaleKeys.importCart: 'Add cart items to my cart (@count)',
+  LocaleKeys.importedItems: '@count items added to your cart',
+    LocaleKeys.importCartPlain: 'Add cart items to my cart',
+  LocaleKeys.failureCartImport:
+      'No products found on this page. Wait for it to finish loading and try again',
+  LocaleKeys.addedToCart: 'Added to cart',
+  LocaleKeys.selectSizeTitle: 'Choose a size',
+  LocaleKeys.selectSizeMessage:
+      'Choose a size on the product page, then tap “Add to cart” again',
+  LocaleKeys.pageLoadError: 'The page couldn’t load',
+  LocaleKeys.pageLoadErrorHint: 'Check your internet connection and try again',
+  LocaleKeys.cart: 'Cart',
+  LocaleKeys.cartEmptyTitle: 'Your cart is empty',
+  LocaleKeys.cartEmptySubtitle:
+      'Open any product and tap “Add to cart” to see it here',
+  LocaleKeys.continueShopping: 'Continue shopping',
+  LocaleKeys.total: 'Total',
+  LocaleKeys.itemsCount: '@count items',
+  LocaleKeys.checkout: 'Checkout',
+  LocaleKeys.checkoutComingSoon: 'Checkout is coming soon',
+  LocaleKeys.size: 'Size',
+  LocaleKeys.color: 'Color',
+  LocaleKeys.sku: 'SKU',
+  LocaleKeys.close: 'Close',
+  LocaleKeys.remove: 'Remove',
+  LocaleKeys.itemRemoved: 'Removed from cart',
+  LocaleKeys.clearCart: 'Empty cart',
+  LocaleKeys.clearCartConfirm:
+      'All products will be removed from your cart. Continue?',
+  LocaleKeys.increaseQuantity: 'Increase quantity',
+  LocaleKeys.decreaseQuantity: 'Decrease quantity',
+  LocaleKeys.failureServer: 'Server error. Please try again shortly',
+  LocaleKeys.failureNetwork:
+      'No internet connection. Check your network and try again',
+  LocaleKeys.failureTimeout: 'The connection took too long. Please try again',
+  LocaleKeys.failureUnauthorized: 'Your session expired. Please sign in again',
+  LocaleKeys.failureCache: 'Couldn’t read data saved on this device',
+  LocaleKeys.failureUnknown: 'Something went wrong. Please try again',
+  LocaleKeys.failureExtraction:
+      'Couldn’t read the product details. Wait for the page to finish loading and try again',
+};
