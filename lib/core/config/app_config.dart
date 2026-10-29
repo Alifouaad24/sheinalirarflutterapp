@@ -6,7 +6,7 @@ abstract final class AppConfig {
   static const String appName = 'Shein Cart';
 
   /// First page loaded inside the WebView.
-  static const String startUrl = 'https://us.shein.com';
+  static const String startUrl = 'https://ar.shein.com';
 
   /// Backend base URL (used by ApiClient). Replace when the API is ready.
   static const String apiBaseUrl = 'https://api.example.com/v1';
