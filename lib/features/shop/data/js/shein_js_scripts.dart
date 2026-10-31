@@ -260,13 +260,41 @@ abstract final class SheinJsScripts {
     if (!t || /^SHEIN\s*[|\-\u2013]/i.test(t)) return null;
     return cleanTitle(t) || null;
   }
-  // Real sizes are short tokens (S, XL, 38, EU 40, One-size...).
-  // Rejects things like "Click to buy" or promo codes such as "222+023".
+  // Real sizes are short tokens (S, XL, 38, EU 40, One-size, 4XL+,
+  // "3-6 Months (62cm)"...). Rejects things like "Click to buy" or promo
+  // codes such as "222+023".
   function sizeText(v) {
     if (!v) return null;
     v = String(v).replace(/\s+/g, ' ').trim();
-    if (!v || v.length > 14 || v.indexOf('+') !== -1 || v.split(' ').length > 2) return null;
+    if (!v || v.length > 24 || /\d\s*\+\s*\d/.test(v) || v.split(' ').length > 4) return null;
     return v;
+  }
+  // The size label of an option. The option often also contains badges
+  // ("Only 2 left", "Low stock", local size hints...), so its full text may
+  // not look like a size: fall back to attributes and its first leaf text.
+  function sizeLabel(el) {
+    if (!el) return null;
+    var attrs = ['aria-label', 'data-attr-value', 'data-value', 'data-size', 'title'];
+    for (var i = 0; i < attrs.length; i++) {
+      var a = sizeText(el.getAttribute(attrs[i]));
+      if (a) return a;
+    }
+    var whole = sizeText(textOf(el));
+    if (whole) return whole;
+    var all = el.querySelectorAll('*');
+    for (var j = 0; j < all.length; j++) {
+      if (all[j].children.length) continue;
+      var t = sizeText(textOf(all[j]));
+      if (t) return t;
+    }
+    return null;
+  }
+  var SELECTED_CLASS = /(^|[\s_-])(active|selected|checked|current)($|[\s_-])/i;
+  function isSelectedOption(el) {
+    if (el.getAttribute('aria-checked') === 'true' || el.getAttribute('aria-selected') === 'true' ||
+        el.getAttribute('aria-pressed') === 'true') return true;
+    var cls = String(el.className || '');
+    return SELECTED_CLASS.test(cls) && !/inactive|unactive|in-active/i.test(cls);
   }
   // SHEIN is a single-page app: when you open a product from another page,
   // meta tags / JSON-LD still describe the FIRST page that was loaded.
@@ -394,12 +422,39 @@ abstract final class SheinJsScripts {
   }
 
   // ---------- variants ----------
+  // Only visible selected options count: hidden ones belong to a previously
+  // opened product (SPA) and would report the wrong size.
+  function findSelectedSize(options) {
+    for (var i = 0; i < CONFIG.selectedSize.length; i++) {
+      var list;
+      try { list = document.querySelectorAll(CONFIG.selectedSize[i]); } catch (e) { continue; }
+      for (var j = 0; j < list.length; j++) {
+        var el = list[j];
+        if (!isVisible(el) || /inactive|unactive|in-active/i.test(String(el.className || ''))) continue;
+        var v = sizeLabel(el);
+        if (v) return v;
+      }
+    }
+    // Class names changed: look for an option marked as selected some other way.
+    for (var k = 0; k < options.length; k++) {
+      if (isSelectedOption(options[k])) {
+        var w = sizeLabel(options[k]);
+        if (w) return w;
+      }
+    }
+    return null;
+  }
   function readSize() {
-    var options = [].filter.call(queryAll(CONFIG.sizeOptions), function (o) { return sizeText(textOf(o)); });
-    var selected = query(CONFIG.selectedSize);
-    var value = selected ? sizeText(selected.getAttribute('aria-label') || textOf(selected)) : null;
-    if (!value && options.length === 1) value = sizeText(textOf(options[0])); // one-size product
-    return { value: value, required: options.length > 1 && !value };
+    var options = [].filter.call(queryAll(CONFIG.sizeOptions), function (o) { return sizeLabel(o); });
+    var value = findSelectedSize(options);
+    if (!value && options.length === 1) value = sizeLabel(options[0]); // one-size product
+    return {
+      value: value,
+      required: options.length > 1 && !value,
+      debug: {
+        options: options.slice(0, 12).map(function (o) { return sizeLabel(o) + ' [' + String(o.className || '').slice(0, 80) + ']'; })
+      }
+    };
   }
   function readColor(ld) {
     var el = query(CONFIG.selectedColor);
@@ -438,7 +493,10 @@ abstract final class SheinJsScripts {
       mainEl && imageSrc(mainEl)
     ]);
     var size = readSize();
-    if (size.required) { send({ type: 'error', code: 'SIZE_REQUIRED' }); return; }
+    if (size.required) {
+      send({ type: 'error', code: 'SIZE_REQUIRED', message: JSON.stringify(size.debug) });
+      return;
+    }
 
     send({
       type: 'product',
