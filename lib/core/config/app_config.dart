@@ -43,6 +43,12 @@ abstract final class AppConfig {
   /// (e.g. 'SAR' for ar.shein.com). Keep null to show the number only.
   static const String? fallbackCurrency = 'USD';
 
+  /// Currency requested from SHEIN itself (via its `currency` cookie), so
+  /// ar.shein.com keeps the Arabic site but shows prices in this currency.
+  /// SHEIN only honours currencies it supports for the selected ship-to
+  /// country. Set to null to keep SHEIN's default.
+  static const String? siteCurrency = 'USD';
+
   /// Currency used to show prices and totals in the app.
   static const String displayCurrency = 'USD';
 

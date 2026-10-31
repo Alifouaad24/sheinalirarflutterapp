@@ -161,17 +161,36 @@ abstract final class SheinJsScripts {
     return null;
   }
   function textOf(el) { return el ? (el.textContent || '').replace(/\s+/g, ' ').trim() : ''; }
+  // SHEIN keeps previously opened product pages in the DOM (hidden) after
+  // SPA navigation, so the first match may belong to the OLD product.
+  // Hidden (display:none) elements have no client rects.
+  function isVisible(el) {
+    if (!el || !el.getClientRects().length) return false;
+    var cs = getComputedStyle(el);
+    return cs.visibility !== 'hidden';
+  }
   function query(selectors) {
+    var fallback = null;
     for (var i = 0; i < selectors.length; i++) {
-      try { var el = document.querySelector(selectors[i]); if (el) return el; } catch (e) {}
+      try {
+        var list = document.querySelectorAll(selectors[i]);
+        for (var j = 0; j < list.length; j++) { if (isVisible(list[j])) return list[j]; }
+        if (!fallback && list.length) fallback = list[0];
+      } catch (e) {}
     }
-    return null;
+    return fallback;
   }
   function queryAll(selectors) {
+    var fallback = [];
     for (var i = 0; i < selectors.length; i++) {
-      try { var list = document.querySelectorAll(selectors[i]); if (list.length) return list; } catch (e) {}
+      try {
+        var list = document.querySelectorAll(selectors[i]);
+        var visible = [].filter.call(list, isVisible);
+        if (visible.length) return visible;
+        if (!fallback.length && list.length) fallback = list;
+      } catch (e) {}
     }
-    return [];
+    return fallback;
   }
   function meta(names) {
     for (var i = 0; i < names.length; i++) {
@@ -329,7 +348,9 @@ abstract final class SheinJsScripts {
     if (m) return m[1];
     if (/^[A-Za-z0-9_-]{6,}$/.test(txt)) return txt;
     // Description section may be collapsed: textContent still contains it.
-    m = ((document.body && document.body.textContent) || '').match(SKU_RE);
+    // innerText skips hidden (old) pages; textContent also covers collapsed sections.
+    m = ((document.body && document.body.innerText) || '').match(SKU_RE) ||
+        ((document.body && document.body.textContent) || '').match(SKU_RE);
     if (m) return m[1];
     // Inline JSON of a directly-loaded product page ("goods_sn":"sw22...").
     var scripts = document.querySelectorAll('script:not([src])');

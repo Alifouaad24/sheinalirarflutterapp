@@ -18,6 +18,7 @@ abstract final class LocaleKeys {
   static const String pageLoadError = 'page_load_error';
   static const String pasteUrlHint = 'paste_url_hint';
   static const String go = 'go';
+  static const String home = 'home';
   static const String paste = 'paste';
   static const String clearText = 'clear_text';
   static const String invalidUrl = 'invalid_url';

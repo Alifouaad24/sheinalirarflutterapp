@@ -13,6 +13,7 @@ const Map<String, String> enUS = {
       'Open a product to add it, or paste a cart link above',
   LocaleKeys.pasteUrlHint: 'Paste a SHEIN cart link here',
   LocaleKeys.go: 'Go',
+  LocaleKeys.home: 'Home',
   LocaleKeys.paste: 'Paste',
   LocaleKeys.clearText: 'Clear',
   LocaleKeys.invalidUrl: 'Invalid link. Copy the full cart link and paste it',

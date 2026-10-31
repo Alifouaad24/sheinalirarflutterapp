@@ -58,13 +58,20 @@ class UrlPasteBar extends GetView<ShopController> implements PreferredSizeWidget
             ),
           ),
           const SizedBox(width: AppSpacing.xs),
-          FilledButton(
-            onPressed: () => controller.openPastedUrl(),
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(64, 44),
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            ),
-            child: Text(LocaleKeys.go.tr),
+          // Empty input → "Home" (site root), otherwise "Go" (open the URL).
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: textController,
+            builder: (_, value, __) {
+              final isEmpty = value.text.trim().isEmpty;
+              return FilledButton(
+                onPressed: isEmpty ? controller.openHome : () => controller.openPastedUrl(),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(64, 44),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                ),
+                child: Text(isEmpty ? LocaleKeys.home.tr : LocaleKeys.go.tr),
+              );
+            },
           ),
         ],
       ),

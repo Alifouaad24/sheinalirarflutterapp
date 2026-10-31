@@ -12,6 +12,7 @@ const Map<String, String> arSA = {
   LocaleKeys.openProductHint: 'افتح منتجاً لإضافته، أو الصق رابط سلة في الأعلى',
   LocaleKeys.pasteUrlHint: 'الصق رابط سلة SHEIN هنا',
   LocaleKeys.go: 'اذهب',
+  LocaleKeys.home: 'الرئيسية',
   LocaleKeys.paste: 'لصق',
     LocaleKeys.importCartPlain: 'أضف منتجات السلة إلى سلتي',
   LocaleKeys.clearText: 'مسح',

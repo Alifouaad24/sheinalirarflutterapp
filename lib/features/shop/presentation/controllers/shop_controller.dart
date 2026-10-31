@@ -80,7 +80,28 @@ class ShopController extends GetxController {
     super.onInit();
     webViewController = _buildWebViewController();
     _configureAndroid();
-    webViewController.loadRequest(Uri.parse(AppConfig.startUrl));
+    _loadStartPage();
+  }
+
+  Future<void> _loadStartPage() async {
+    await _applySiteCurrency();
+    await webViewController.loadRequest(Uri.parse(AppConfig.startUrl));
+  }
+
+  /// Sets SHEIN's `currency` cookie before the first load so the site
+  /// renders prices in [AppConfig.siteCurrency] without leaving ar.shein.com.
+  Future<void> _applySiteCurrency() async {
+    final currency = AppConfig.siteCurrency;
+    if (currency == null) return;
+    try {
+      await WebViewCookieManager().setCookie(WebViewCookie(
+        name: 'currency',
+        value: currency,
+        domain: '.shein.com',
+      ));
+    } catch (e) {
+      if (kDebugMode) debugPrint('[ShopController] currency cookie failed: $e');
+    }
   }
 
   /// Android-only WebView settings. Must run before the first loadRequest.
@@ -289,6 +310,13 @@ class ShopController extends GetxController {
     _pastedAt = DateTime.now();
     _pastedLandingPath = null;
     await webViewController.loadRequest(Uri.parse(url));
+  }
+
+  /// Loads the site root (e.g. https://ar.shein.com).
+  Future<void> openHome() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    final uri = Uri.parse(AppConfig.startUrl);
+    await webViewController.loadRequest(uri.replace(path: '/'));
   }
 
   Future<void> pasteFromClipboard() async {
