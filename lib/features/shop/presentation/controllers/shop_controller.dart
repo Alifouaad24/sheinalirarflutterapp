@@ -57,6 +57,24 @@ class ShopController extends GetxController {
   DateTime? _pastedAt;
   Timer? _probeTimer;
 
+  /// Pull distance needed to trigger a refresh, in logical pixels.
+  static const double pullToRefreshThreshold = 80;
+
+  /// How far the user is currently pulling down from the top of the page
+  /// (0 when not pulling), as reported by [SheinJsScripts.pullToRefresh].
+  final RxDouble pullDistance = 0.0.obs;
+  final RxBool isRefreshing = false.obs;
+
+  /// Native WebView scroll offset. Second guard next to the in-page check:
+  /// a pull only counts while the WebView itself is at y = 0.
+  double _nativeScrollY = 0;
+
+  /// Set once the current gesture is known not to be a pull-to-refresh
+  /// (page was scrolled); cleared when the finger is lifted.
+  bool _pullCancelled = false;
+
+  Completer<void>? _reloadCompleter;
+
   @override
   void onInit() {
     super.onInit();
@@ -98,6 +116,11 @@ class ShopController extends GetxController {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.white)
       ..setUserAgent(AppConfig.webViewUserAgent)
+      ..setOnScrollPositionChange(_onNativeScroll)
+      ..addJavaScriptChannel(
+        AppConfig.pullToRefreshChannelName,
+        onMessageReceived: (message) => _onPullMessage(message.message),
+      )
       ..addJavaScriptChannel(
         AppConfig.jsChannelName,
         onMessageReceived: (message) {
@@ -123,6 +146,7 @@ class ShopController extends GetxController {
             _updateUrl(url);
             _scheduleCartProbe();
             _injectHideScript();
+            _injectPullToRefresh();
           },
           onWebResourceError: _onWebResourceError,
         ),
@@ -142,6 +166,8 @@ class ShopController extends GetxController {
   void _onPageStarted(String url) {
     hasLoadError.value = false;
     isPageLoading.value = true;
+    pullDistance.value = 0;
+    _nativeScrollY = 0;
     _updateUrl(url);
   }
 
@@ -153,7 +179,9 @@ class ShopController extends GetxController {
   Future<void> _onPageFinished(String url) async {
     loadingProgress.value = 100;
     isPageLoading.value = false;
+    _completeReload();
     _updateUrl(url);
+    await _injectPullToRefresh();
     await _injectHideScript();
     // SHEIN renders client-side, so give it a few seconds before checking.
     Future.delayed(const Duration(seconds: 6), _logPageDiagnostics);
@@ -205,7 +233,14 @@ class ShopController extends GetxController {
     if (error.isForMainFrame ?? false) {
       hasLoadError.value = true;
       isPageLoading.value = false;
+      _completeReload();
     }
+  }
+
+  void _completeReload() {
+    final completer = _reloadCompleter;
+    _reloadCompleter = null;
+    if (completer != null && !completer.isCompleted) completer.complete();
   }
 
   void _updateUrl(String url) {
@@ -290,6 +325,53 @@ class ShopController extends GetxController {
     });
   }
 
+  Future<void> _injectPullToRefresh() async {
+    try {
+      await webViewController.runJavaScript(SheinJsScripts.pullToRefresh);
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('[ShopController] pull-to-refresh script failed: $error');
+      }
+    }
+  }
+
+  void _onNativeScroll(ScrollPositionChange change) {
+    _nativeScrollY = change.y;
+    if (change.y > 0 && pullDistance.value > 0) {
+      _cancelPull('native scrollY=${change.y}');
+    }
+  }
+
+  void _cancelPull(String reason) {
+    if (pullDistance.value > 0 && kDebugMode) {
+      debugPrint('[PullToRefresh] cancelled: $reason');
+    }
+    _pullCancelled = true;
+    pullDistance.value = 0;
+  }
+
+  void _onPullMessage(String message) {
+    if (message.startsWith('pull:')) {
+      if (isRefreshing.value || _pullCancelled) return;
+      if (_nativeScrollY > 0) {
+        _cancelPull('native scrollY=$_nativeScrollY');
+        return;
+      }
+      pullDistance.value = double.tryParse(message.substring(5)) ?? 0;
+      return;
+    }
+
+    // 'release' or 'cancel': the gesture is over.
+    final shouldRefresh = message == 'release' &&
+        !_pullCancelled &&
+        !isRefreshing.value &&
+        _nativeScrollY <= 0 &&
+        pullDistance.value >= pullToRefreshThreshold;
+    _pullCancelled = false;
+    pullDistance.value = 0;
+    if (shouldRefresh) reload();
+  }
+
   Future<void> _injectHideScript() async {
     if (!AppConfig.hideNativeCartUi) return;
     try {
@@ -328,6 +410,23 @@ class ShopController extends GetxController {
   Future<void> retry() async {
     hasLoadError.value = false;
     await webViewController.loadRequest(Uri.parse(currentUrl.value));
+  }
+
+  /// Pull-to-refresh: reloads the current page and completes once it has
+  /// finished loading (or failed), so the refresh spinner can hide.
+  Future<void> reload() async {
+    hasLoadError.value = false;
+    isRefreshing.value = true;
+    try {
+      final completer = _reloadCompleter ??= Completer<void>();
+      await webViewController.reload();
+      await completer.future.timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => _reloadCompleter = null,
+      );
+    } finally {
+      isRefreshing.value = false;
+    }
   }
 
   void openCart() => Get.toNamed(AppRoutes.cart);

@@ -750,4 +750,80 @@ abstract final class SheinJsScripts {
   }
 })();
 ''';
+
+  /// Chrome-style pull-to-refresh detection, posted to
+  /// [AppConfig.pullToRefreshChannelName]:
+  /// `'pull:<px>'` while pulling, then `'release'` or `'cancel'`.
+  ///
+  /// A pull only starts if the page (window and every scroll container
+  /// around the touched element) is at scrollTop 0 when the finger goes
+  /// down, so a drag that begins lower on the page only ever scrolls up.
+  /// Idempotent: safe to run on every page load and URL change.
+  static final String pullToRefresh = _pullToRefreshTemplate.replaceFirst(
+    '__CHANNEL__',
+    AppConfig.pullToRefreshChannelName,
+  );
+
+  static const String _pullToRefreshTemplate = r'''
+(function () {
+  if (window.__flutterPullToRefresh) return;
+  var channel = window['__CHANNEL__'];
+  if (!channel) return;
+  window.__flutterPullToRefresh = true;
+
+  var SLOP = 10;
+  var startX = 0, startY = 0, armed = false, pulling = false;
+  var opts = { capture: true, passive: true };
+
+  function isAtTop(el) {
+    var scroller = document.scrollingElement || document.documentElement;
+    var root = Math.max(
+      window.scrollY || 0,
+      window.pageYOffset || 0,
+      scroller.scrollTop || 0,
+      document.documentElement.scrollTop || 0,
+      (document.body && document.body.scrollTop) || 0,
+      (window.visualViewport && window.visualViewport.pageTop) || 0
+    );
+    if (root > 0) return false;
+    for (; el && el.nodeType === 1; el = el.parentElement) {
+      if (el.scrollTop > 0) return false;
+    }
+    return true;
+  }
+
+  function stop(message) {
+    if (pulling) channel.postMessage(message);
+    armed = false;
+    pulling = false;
+  }
+
+  window.addEventListener('touchstart', function (e) {
+    pulling = false;
+    armed = e.touches.length === 1 && isAtTop(e.target);
+    if (armed) {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    }
+  }, opts);
+
+  window.addEventListener('touchmove', function (e) {
+    if (!armed) return;
+    if (e.touches.length !== 1) { stop('cancel'); return; }
+    var dx = e.touches[0].clientX - startX;
+    var dy = e.touches[0].clientY - startY;
+    if (!pulling) {
+      if (Math.abs(dx) < SLOP && Math.abs(dy) < SLOP) return;
+      // Scrolling the page down or swiping sideways: not a pull.
+      if (dy <= Math.abs(dx)) { armed = false; return; }
+      pulling = true;
+    }
+    if (!isAtTop(e.target)) { stop('cancel'); return; }
+    channel.postMessage('pull:' + Math.max(0, Math.round(dy - SLOP)));
+  }, opts);
+
+  window.addEventListener('touchend', function () { stop('release'); }, opts);
+  window.addEventListener('touchcancel', function () { stop('cancel'); }, opts);
+})();
+''';
 }

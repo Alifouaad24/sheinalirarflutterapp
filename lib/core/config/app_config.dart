@@ -20,6 +20,10 @@ abstract final class AppConfig {
   /// Name of the JavaScriptChannel exposed to the page (window.FlutterCart).
   static const String jsChannelName = 'FlutterCart';
 
+  /// JavaScriptChannel that reports pull-to-refresh gestures
+  /// (window.FlutterPullToRefresh).
+  static const String pullToRefreshChannelName = 'FlutterPullToRefresh';
+
   /// User agent sent by the WebView. The default Android WebView agent
   /// contains "; wv)", which some sites (SHEIN included) use to detect
   /// embedded browsers and serve a degraded/empty page. Set to null to keep

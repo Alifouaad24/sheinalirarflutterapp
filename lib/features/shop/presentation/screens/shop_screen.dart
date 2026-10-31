@@ -27,7 +27,7 @@ class ShopScreen extends GetView<ShopController> {
             CartIconButton(onPressed: controller.openCart),
             const SizedBox(width: AppSpacing.xxs),
           ],
-           bottom: const UrlPasteBar(),
+          bottom: const UrlPasteBar(),
         ),
         body: SafeArea(
           top: false,

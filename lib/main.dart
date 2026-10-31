@@ -32,9 +32,7 @@ class ShopApp extends StatelessWidget {
       // Theme
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.light, // Switch to ThemeMode.system when dark mode is ready.
-
-      // Localization (Arabic default, RTL handled by GlobalWidgetsLocalizations)
+      themeMode: ThemeMode.light,
       translations: AppTranslations(),
       locale: AppTranslations.initialLocale,
       fallbackLocale: AppTranslations.fallbackLocale,
