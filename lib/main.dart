@@ -12,8 +12,6 @@ import 'package:shein_cart_app/routes/initial_binding.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Storage must be ready before anything reads from it (cart, auth token…).
   await Get.putAsync<LocalStorageService>(
     () => LocalStorageService().init(),
     permanent: true,
