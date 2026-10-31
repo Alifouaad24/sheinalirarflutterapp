@@ -1,3 +1,4 @@
+import 'package:dartz/dartz.dart' hide State;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,6 +7,8 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'dart:async';
 import 'package:shein_cart_app/core/config/app_config.dart';
+import 'package:shein_cart_app/core/errors/failures.dart';
+import 'package:shein_cart_app/features/shop/data/models/product_model.dart';
 import 'package:shein_cart_app/core/localization/locale_keys.dart';
 import 'package:shein_cart_app/core/utils/app_snackbar.dart';
 import 'package:shein_cart_app/features/cart/presentation/controllers/cart_controller.dart';
@@ -291,12 +294,28 @@ class ShopController extends GetxController {
         (failure) async => AppSnackbar.error(failure.message),
         (items) async {
           final imported = await _cart.importItems(items);
-          if (imported) openCart();
+          if (!imported) return;
+          _resetAfterCartImport();
+          openCart();
         },
       );
     } finally {
       isImportingCart.value = false;
     }
+  }
+
+  /// After a cart is imported: empty the URL input and send the WebView back
+  /// to the site root, so the user starts fresh when returning from the cart.
+  void _resetAfterCartImport() {
+    urlTextController.clear();
+    // Forget the pasted link, otherwise the root page would be treated as
+    // the "pasted cart page" if it loads within the paste window.
+    _pastedAt = null;
+    _pastedLandingPath = null;
+    _probeTimer?.cancel();
+    isCartPage.value = false;
+    cartPageItemCount.value = 0;
+    openHome();
   }
 
   Future<void> openPastedUrl([String? raw]) async {
@@ -418,7 +437,7 @@ class ShopController extends GetxController {
     if (!canAddToCart) return;
     isAddingToCart.value = true;
     try {
-      final result = await _extractor.extract(webViewController);
+      final result = await _extractProductWithRetry();
       await result.fold<Future<void>>(
         (failure) async {
           if (failure is SizeNotSelectedFailure) {
@@ -432,6 +451,51 @@ class ShopController extends GetxController {
       );
     } finally {
       isAddingToCart.value = false;
+    }
+  }
+
+  /// SHEIN opens products via client-side (SPA) navigation, so right after
+  /// opening one the page may not have rendered its title/price yet, and the
+  /// meta tags still describe the previous page. Instead of failing at once:
+  /// 1. wait for the page to finish loading,
+  /// 2. retry the extraction a few times while the page renders,
+  /// 3. as a last resort reload the page (a full load always has the data)
+  ///    and try again.
+  Future<Either<Failure, ProductModel>> _extractProductWithRetry() async {
+    await _waitForPageLoad();
+    var result = await _extractWithRetries();
+    if (!_isRetryable(result) || isClosed || !isProductPage.value) {
+      return result;
+    }
+
+    if (kDebugMode) debugPrint('[ShopController] extraction failed, reloading page');
+    await reload();
+    await _waitForPageLoad();
+    // Give the client-side render a moment after onPageFinished.
+    await Future.delayed(const Duration(milliseconds: 1500));
+    if (isClosed || !isProductPage.value) return result;
+    result = await _extractWithRetries();
+    return result;
+  }
+
+  Future<Either<Failure, ProductModel>> _extractWithRetries({int attempts = 4}) async {
+    var result = await _extractor.extract(webViewController);
+    for (var i = 1; i < attempts && _isRetryable(result) && !isClosed; i++) {
+      await Future.delayed(const Duration(milliseconds: 1000));
+      result = await _extractor.extract(webViewController);
+    }
+    return result;
+  }
+
+  /// Only "couldn't read the product" is worth retrying; a missing size
+  /// needs the user to act.
+  static bool _isRetryable(Either<Failure, ProductModel> result) =>
+      result.fold((failure) => failure is ProductExtractionFailure, (_) => false);
+
+  Future<void> _waitForPageLoad({Duration timeout = const Duration(seconds: 10)}) async {
+    final deadline = DateTime.now().add(timeout);
+    while (isPageLoading.value && !isClosed && DateTime.now().isBefore(deadline)) {
+      await Future.delayed(const Duration(milliseconds: 200));
     }
   }
 
