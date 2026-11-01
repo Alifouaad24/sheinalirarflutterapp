@@ -36,6 +36,14 @@ abstract final class SheinSelectors {
     '.product-price__main',
     '[class*="sale-price"]',
     '[class*="main-price"]',
+    // m.shein.com (mobile PWA) product page
+    '.productPrice .from',
+    '[class*="productPrice"] [class*="from"]',
+    '[class*="productPrice"]',
+    '[class*="mainPrice"]',
+    '[class*="salePrice"]',
+    '[class*="price__from"]',
+    '[class*="goods-price"]',
   ];
 
   static const List<String> mainImage = [

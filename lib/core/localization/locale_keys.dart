@@ -14,6 +14,7 @@ abstract final class LocaleKeys {
   static const String openProductHint = 'open_product_hint';
   static const String addedToCart = 'added_to_cart';
   static const String selectSizeTitle = 'select_size_title';
+  static const String securityCheckPending = 'security_check_pending';
   static const String selectSizeMessage = 'select_size_message';
   static const String pageLoadError = 'page_load_error';
   static const String pasteUrlHint = 'paste_url_hint';

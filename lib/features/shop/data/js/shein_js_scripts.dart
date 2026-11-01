@@ -250,8 +250,36 @@ abstract final class SheinJsScripts {
     } catch (e) {}
     return null;
   }
+  // Also strips a trailing rating badge such as "4.87(1000+)".
   function cleanTitle(t) {
-    return t ? String(t).replace(/\s*[|\-\u2013]\s*SHEIN.*$/i, '').trim() : t;
+    return t ? String(t)
+      .replace(/\s*[|\-\u2013]\s*SHEIN.*$/i, '')
+      .replace(/\s*\d(?:\.\d{1,2})?\s*\(\s*\d[\d,.]*\s*[kK+]*\s*\)\s*$/, '')
+      .trim() : t;
+  }
+  // A price of 0 (or a stray "0" from a badge) is never a real price.
+  function positive(n) { return typeof n === 'number' && n > 0 ? n : null; }
+  // Fallback when no price selector matches (SHEIN changes class names and
+  // m.shein.com uses a different layout): the visible, non-struck-through
+  // price-looking text with the biggest font near the top of the page.
+  var PAGE_PRICE_RE = /^(?:US\$|SAR|SR|AED|KWD|KD|QAR|QR|BHD|BD|OMR|EGP|JOD|\$|\u20ac|\u00a3)?\s?\d[\d,]*(?:[.\u066b]\d{1,2})?\s?(?:US\$|SAR|SR|AED|KWD|KD|QAR|QR|BHD|BD|OMR|EGP|JOD|\$|\u20ac|\u00a3|\u0631\.?\s?\u0633|\u062f\.?\s?\u0625|\u062f\.?\s?\u0643)?$/;
+  function priceFromPage() {
+    var best = null, bestSize = 0;
+    var els = document.body ? document.body.querySelectorAll('span,div,p,b,strong,em') : [];
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (el.children.length > 2) continue;
+      var t = textOf(el);
+      if (!t || t.length > 20 || !PAGE_PRICE_RE.test(t) || !/[.\u066b]\d|[$\u20ac\u00a3]|[A-Z]{2,3}|\u0631|\u062f/.test(t)) continue;
+      if (el.closest('del,s,strike') || !isVisible(el)) continue;
+      var cs = getComputedStyle(el);
+      if (/line-through/.test(cs.textDecorationLine || cs.textDecoration || '')) continue;
+      var r = el.getBoundingClientRect();
+      if (r.top + scrollY > 2000) continue;
+      var size = parseFloat(cs.fontSize) || 0;
+      if (size > bestSize) { bestSize = size; best = t; }
+    }
+    return best;
   }
   // The site-wide title ("SHEIN | Women's Fashion ...") is never a product name.
   function productTitle(t) {
@@ -484,6 +512,7 @@ abstract final class SheinJsScripts {
     var offer = ldOffer(ld);
     var priceEl = query(CONFIG.price);
     var priceText = textOf(priceEl);
+    if (!positive(toNumber(priceText))) priceText = priceFromPage() || priceText;
     // The currency symbol is sometimes in a sibling element, so also check the parent.
     var priceContext = priceText + ' ' + textOf(priceEl && priceEl.parentElement);
  var mainEl = largestVisibleImageEl() || query(CONFIG.mainImage);
@@ -509,9 +538,9 @@ abstract final class SheinJsScripts {
           productTitle(document.title)
         ]),
         price: firstValid([
-          toNumber(offer && (isEmpty(offer.price) ? offer.lowPrice : offer.price)),
-          ogOk ? toNumber(meta(['product:price:amount', 'og:price:amount'])) : null,
-          toNumber(priceText)
+          positive(toNumber(offer && (isEmpty(offer.price) ? offer.lowPrice : offer.price))),
+          ogOk ? positive(toNumber(meta(['product:price:amount', 'og:price:amount']))) : null,
+          positive(toNumber(priceText))
         ]),
         currency: firstValid([
           offer && offer.priceCurrency,

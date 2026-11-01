@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// App-wide configuration values.
 ///
 /// Anything that may differ between environments (staging / production)
@@ -28,9 +30,24 @@ abstract final class AppConfig {
   /// contains "; wv)", which some sites (SHEIN included) use to detect
   /// embedded browsers and serve a degraded/empty page. Set to null to keep
   /// the platform default.
-  static const String? webViewUserAgent =
+  ///
+  /// The agent must match the real engine: an Android/Chrome agent on iOS
+  /// (WKWebView) is flagged by SHEIN's bot check (Geetest captcha, then a
+  /// redirect to product404.html), so iOS gets a genuine Safari agent.
+  static String? get webViewUserAgent => switch (defaultTargetPlatform) {
+        TargetPlatform.iOS => _iosUserAgent,
+        TargetPlatform.android => _androidUserAgent,
+        _ => null,
+      };
+
+  static const String _androidUserAgent =
       'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36';
+
+  static const String _iosUserAgent =
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) '
+      'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 '
+      'Mobile/15E148 Safari/604.1';
 
   /// Diagnostics switch: set to false to stop injecting the script that
   /// hides SHEIN's own add-to-bag UI (useful to rule it out when debugging).

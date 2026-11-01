@@ -24,6 +24,8 @@ const Map<String, String> arSA = {
       'لم يتم العثور على منتجات في هذه الصفحة. انتظر اكتمال التحميل ثم حاول مجدداً',
   LocaleKeys.addedToCart: 'تمت إضافة المنتج إلى السلة',
   LocaleKeys.selectSizeTitle: 'اختر المقاس',
+  LocaleKeys.securityCheckPending:
+      'يعرض SHEIN فحصاً أمنياً. أكمله وانتظر حتى يظهر المنتج ثم حاول مرة أخرى.',
   LocaleKeys.selectSizeMessage:
       'اختر المقاس من صفحة المنتج ثم اضغط «أضف إلى السلة» مجدداً',
   LocaleKeys.pageLoadError: 'تعذّر تحميل الصفحة',

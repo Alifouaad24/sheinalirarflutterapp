@@ -25,6 +25,8 @@ const Map<String, String> enUS = {
       'No products found on this page. Wait for it to finish loading and try again',
   LocaleKeys.addedToCart: 'Added to cart',
   LocaleKeys.selectSizeTitle: 'Choose a size',
+  LocaleKeys.securityCheckPending:
+      'SHEIN is showing a security check. Complete it, wait for the product to load, then try again.',
   LocaleKeys.selectSizeMessage:
       'Choose a size on the product page, then tap “Add to cart” again',
   LocaleKeys.pageLoadError: 'The page couldn’t load',

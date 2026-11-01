@@ -1,4 +1,4 @@
-import 'package:dartz/dartz.dart' hide State;
+﻿import 'package:dartz/dartz.dart' hide State;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -20,7 +20,7 @@ import 'package:shein_cart_app/routes/app_routes.dart';
 import 'package:shein_cart_app/features/shop/data/services/cart_page_extractor.dart';
 
 /// Owns the WebView, tracks navigation state and orchestrates
-/// "extract product → add to cart".
+/// "extract product â†’ add to cart".
 class ShopController extends GetxController {
   ShopController({
     required ProductExtractor extractor,
@@ -177,7 +177,7 @@ class ShopController extends GetxController {
       );
   }
 
-  /// Blocks app deep links (intent://, sheinlink://…) that the WebView
+  /// Blocks app deep links (intent://, sheinlink://â€¦) that the WebView
   /// can't open and that would otherwise show an error page.
   NavigationDecision _onNavigationRequest(NavigationRequest request) {
     final scheme = Uri.tryParse(request.url)?.scheme.toLowerCase();
@@ -353,7 +353,7 @@ class ShopController extends GetxController {
     final match =
         RegExp(r'https?://[^\s<>"]+', caseSensitive: false).firstMatch(value);
     if (match != null) {
-      return match.group(0)!.replaceFirst(RegExp(r'[)\].,;!?،]+$'), '');
+      return match.group(0)!.replaceFirst(RegExp(r'[)\].,;!?طŒ]+$'), '');
     }
     if (RegExp(r'^[\w-]+(\.[\w-]+)+(/\S*)?$').hasMatch(value))
       return 'https://$value';
@@ -458,24 +458,43 @@ class ShopController extends GetxController {
   /// opening one the page may not have rendered its title/price yet, and the
   /// meta tags still describe the previous page. Instead of failing at once:
   /// 1. wait for the page to finish loading,
-  /// 2. retry the extraction a few times while the page renders,
-  /// 3. as a last resort reload the page (a full load always has the data)
-  ///    and try again.
+  /// 2. retry the extraction a few times while the page renders.
+  ///
+  /// The page is never reloaded automatically: reloading a product page makes
+  /// SHEIN's bot protection show a Cloudflare challenge ("Just a moment..."),
+  /// and the extractor would then read that challenge page instead.
   Future<Either<Failure, ProductModel>> _extractProductWithRetry() async {
     await _waitForPageLoad();
-    var result = await _extractWithRetries();
-    if (!_isRetryable(result) || isClosed || !isProductPage.value) {
-      return result;
+    if (await _isSecurityCheckPage()) {
+      return Left(ProductExtractionFailure(customMessage: LocaleKeys.securityCheckPending.tr));
     }
-
-    if (kDebugMode) debugPrint('[ShopController] extraction failed, reloading page');
-    await reload();
-    await _waitForPageLoad();
-    // Give the client-side render a moment after onPageFinished.
-    await Future.delayed(const Duration(milliseconds: 1500));
-    if (isClosed || !isProductPage.value) return result;
-    result = await _extractWithRetries();
+    final result = await _extractWithRetries();
+    if (_isRetryable(result) && await _isSecurityCheckPage()) {
+      return Left(ProductExtractionFailure(customMessage: LocaleKeys.securityCheckPending.tr));
+    }
     return result;
+  }
+
+  /// True while SHEIN shows a bot check (Cloudflare "Just a moment..." or a
+  /// Geetest captcha) instead of the real page. The app doesn't touch the
+  /// check; it only waits for the user to complete it.
+  Future<bool> _isSecurityCheckPage() async {
+    final url = currentUrl.value;
+    if (url.contains('__cf_chl') || url.contains('/cdn-cgi/challenge-platform')) {
+      return true;
+    }
+    try {
+      final title = (await webViewController.getTitle() ?? '').toLowerCase();
+      if (title.contains('just a moment') || title.contains('attention required')) {
+        return true;
+      }
+      final hasCaptcha = await webViewController.runJavaScriptReturningResult(
+        "!!document.querySelector('.geetest_panel, #challenge-form, #cf-challenge-running')",
+      );
+      return hasCaptcha == true || hasCaptcha.toString() == 'true';
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<Either<Failure, ProductModel>> _extractWithRetries({int attempts = 4}) async {
